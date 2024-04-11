@@ -217,7 +217,19 @@ class CodeEditor:
             file.write(self.text_editor.get(1.0, END))
 
         # Execute the code using the default Python interpreter
-        subprocess.run(["python", "temp_code.py"])
+        process = subprocess.Popen(["python", "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+
+        # Display output in console
+        self.console.config(state='normal')
+        self.console.delete('1.0', END)
+        if stdout:
+            self.console.insert(END, f"Output:\n{stdout.decode()}\n")
+        if stderr:
+            self.console.insert(END, f"Error:\n{stderr.decode()}\n")
+        self.console.config(state='disabled')
+
+        # Remove temporary file
         os.remove("temp_code.py")
 
     def syntax_check(self):
