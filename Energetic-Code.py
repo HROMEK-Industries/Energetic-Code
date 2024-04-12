@@ -9,7 +9,7 @@ class CodeEditor:
         self.root = root
         self.root.title("Energetic Code")
         self.root.geometry("800x600")
-        self.set_window_icon(r"C:\Users\energ\Documents\Code\editor\Energetic-Code.ico")  # Set the application icon
+        self.set_window_icon("Icon.ico")  # Set the application icon
 
         self.theme_var = IntVar(value=1)  # 1 for light theme, 2 for dark theme, 3 for custom theme
 
