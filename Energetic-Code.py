@@ -28,7 +28,7 @@ class CodeEditor:
         console_frame = Frame(self.root)
         console_frame.pack(expand=True, fill='both', padx=(5, 0), pady=(0, 5))
 
-        console_label = Label(console_frame, text="Terminal Output")
+        console_label = Label(console_frame, text="Console Output")
         console_label.pack(anchor='w')
 
         self.console = Text(console_frame, wrap='word', state='disabled')
@@ -186,15 +186,11 @@ class CodeEditor:
             file.write(self.text_editor.get(1.0, END))
 
         try:
-            # Start a system shell subprocess
-            process = subprocess.Popen(["cmd" if os.name == "nt" else "bash"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Get the full path to the Python executable
+            python_executable = sys.executable if hasattr(sys, 'frozen') else sys.executable
 
-            # Execute the code using the Python interpreter or shell
-            process.stdin.write("cd {}\n".format(os.path.dirname(os.path.realpath(__file__))))
-            process.stdin.write("python temp_code.py\n" if os.name == "nt" else "./temp_code.py\n")
-            process.stdin.close()
-
-            # Get output and errors from the subprocess
+            # Execute the code using the Python interpreter
+            process = subprocess.Popen([python_executable, "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             stdout, stderr = process.communicate()
 
             # Display output and errors in the console
