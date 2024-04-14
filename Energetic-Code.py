@@ -6,9 +6,26 @@ window = tk.Tk()
 window.title("Energetic-Code")
 window.geometry("800x600")
 
+#variables
+theme = tk.IntVar()
+theme.set(1)
+console_position = tk.IntVar()
+console_position.set(4)
+
 #functions
 def run(event=None):
-    print("hey")
+    terminal_block.config(state="normal")
+    terminal_block.delete(1.0,tk.END)
+    code_data = block_txt.get("1.0", "end-1c")
+    try:
+
+        # exec(code_data) #executer code
+        terminal_block.insert("end", str(exec(code_data)))
+
+    except Exception as e:
+        terminal_block.insert("end", f"Error: {str(e)}\n")
+        terminal_block.config(state="disable")
+
 
 def new_file_clicked(event=None):
     print("hey")
@@ -18,6 +35,7 @@ def save():
 
 def save_as():
     print("save_as")
+
 
 def open():
     print("open")
@@ -41,10 +59,6 @@ menu_bar.add_cascade(menu=run_menu, label="Run")
 preferences_menu = tk.Menu(menu_bar, tearoff=False)
 theme_menu = tk.Menu(menu_bar,tearoff=False)
 console_position_menu = tk.Menu(menu_bar,tearoff=False)
-theme = tk.IntVar()
-theme.set(1)
-console_position = tk.IntVar()
-console_position.set(1)
 theme_menu.add_radiobutton(label="Light",value=1,variable=theme)
 theme_menu.add_radiobutton(label="Dark",value=2,variable=theme)
 console_position_menu.add_radiobutton(label="Right",value=1,variable=console_position)
@@ -56,7 +70,12 @@ preferences_menu.add_cascade(menu=theme_menu,label="Themes")
 preferences_menu.add_cascade(menu=console_position_menu,label="Console position")
 
 #block text
-#console block
+block_txt = tk.Text(window,bg="snow")
+block_txt.pack(fill="both")
+
+#terminal block
+terminal_block = tk.Text(window,bg="gainsboro",state="disabled")
+terminal_block.pack(fill="both")
 
 #shortcuts
 window.bind_all("<Control-n>", new_file_clicked)
