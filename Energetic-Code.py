@@ -2,7 +2,8 @@ import os
 import subprocess
 import re
 import sys
-from tkinter import Tk, Text, Menu, filedialog, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, colorchooser
+import json
+from tkinter import Tk, Text, Menu, filedialog, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, colorchooser, Entry, messagebox
 
 class CodeEditor:
     def __init__(self, root):
@@ -50,6 +51,9 @@ class CodeEditor:
         run_button = Button(buttons_frame, text="Run", command=self.run_code)
         run_button.grid(row=0, column=3, padx=5)
 
+        find_button = Button(buttons_frame, text="Find", command=self.find_replace)
+        find_button.grid(row=0, column=4, padx=5)
+
         self.main_menu = Menu()
 
         file_menu = Menu(self.main_menu, tearoff=0)
@@ -65,6 +69,8 @@ class CodeEditor:
         self.root.bind_all("<Control-o>", lambda event: self.open_file())
         self.root.bind_all("<Control-s>", lambda event: self.save_file())
         self.root.bind_all("<Control-S>", lambda event: self.save_as_file())
+        self.root.bind_all("<Control-r>", lambda event: self.run_code())
+        self.root.bind_all("<Control-f>", lambda event: self.find_replace())
 
         run_menu = Menu(self.main_menu, tearoff=0)
         run_menu.add_command(label="Run", command=self.run_code, accelerator="F5")
@@ -137,6 +143,11 @@ class CodeEditor:
             self.text_editor.config(bg=color[1])
             self.line_numbers.config(bg=color[1])
             self.console.config(bg=color[1])
+            self.save_custom_theme_color(color[1])
+
+    def save_custom_theme_color(self, color):
+        with open("config.json", "w") as config_file:
+            json.dump({"custom_theme_color": color}, config_file)
 
     def new_file(self):
         # Clear the text editor
@@ -200,6 +211,57 @@ class CodeEditor:
         finally:
             # Remove temporary file
             os.remove("temp_code.py")
+
+    def find_replace(self):
+        find_dialog = Tk()
+        find_dialog.title("Find and Replace")
+
+        find_label = Label(find_dialog, text="Find:")
+        find_label.grid(row=0, column=0, padx=5, pady=5)
+
+        self.find_entry = Entry(find_dialog, width=30)
+        self.find_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        replace_label = Label(find_dialog, text="Replace with:")
+        replace_label.grid(row=1, column=0, padx=5, pady=5)
+
+        self.replace_entry = Entry(find_dialog, width=30)
+        self.replace_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        find_button = Button(find_dialog, text="Find", command=self.find)
+        find_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+
+        replace_button = Button(find_dialog, text="Replace", command=self.replace)
+        replace_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5)
+
+        find_dialog.mainloop()
+
+    def find(self):
+        search_term = self.find_entry.get()
+        text_content = self.text_editor.get(1.0, END)
+        start_index = "1.0"
+        while start_index:
+            start_index = self.text_editor.search(search_term, start_index, stopindex=END, nocase=1, regexp=True)
+            if start_index:
+                line, char = start_index.split('.')
+                line, char = int(line), int(char)
+                end_index = f"{line}.{char + len(search_term)}"
+                self.text_editor.tag_remove("find", 1.0, END)
+                self.text_editor.tag_config("find", background="yellow")
+                self.text_editor.tag_add("find", start_index, end_index)
+                self.text_editor.see(start_index)
+                start_index = f"{line}.{char + len(search_term)}"
+
+    def replace(self):
+        search_term = self.find_entry.get()
+        replacement = self.replace_entry.get()
+        text_content = self.text_editor.get(1.0, END)
+        updated_content = text_content.replace(search_term, replacement)
+        self.text_editor.delete(1.0, END)
+        self.text_editor.insert(1.0, updated_content)
+        self.highlight_text()  # Added to update highlighting after replace
+        self.find()
+
 
 def main():
     root = Tk()
