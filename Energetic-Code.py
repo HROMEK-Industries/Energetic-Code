@@ -1,15 +1,13 @@
 import os
 import subprocess
 import re
-from tkinter import Tk, Text, Menu, filedialog, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, colorchooser, simpledialog, messagebox, Toplevel
-from PIL import Image, ImageTk
+from tkinter import Tk, Text, Menu, filedialog, messagebox, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, Toplevel, colorchooser
 
 class CodeEditor:
     def __init__(self, root):
         self.root = root
         self.root.title("Energetic Code")
         self.root.geometry("800x600")
-        self.set_window_icon("Icon.ico")  # Set the application icon
 
         self.theme_var = IntVar(value=1)  # 1 for light theme, 2 for dark theme, 3 for custom theme
 
@@ -24,8 +22,6 @@ class CodeEditor:
         self.line_numbers.pack(side='left', fill='y', padx=(5, 0), pady=5)
 
         self.text_editor.bind('<KeyRelease>', self.highlight_text)
-        self.text_editor.bind("<KeyRelease>", self.enable_auto_completion)
-        self.root.bind_all("<Control-f>", lambda event: self.find_and_replace())
 
         console_frame = Frame(self.root)
         console_frame.pack(expand=True, fill='both', padx=(5, 0), pady=(0, 5))
@@ -53,9 +49,6 @@ class CodeEditor:
         run_button = Button(buttons_frame, text="Run", command=self.run_code)
         run_button.grid(row=0, column=3, padx=5)
 
-        syntax_check_button = Button(buttons_frame, text="Syntax Check", command=self.syntax_check)
-        syntax_check_button.grid(row=0, column=4, padx=5)
-
         self.main_menu = Menu()
 
         file_menu = Menu(self.main_menu, tearoff=0)
@@ -80,13 +73,9 @@ class CodeEditor:
         theme_menu = Menu(settings_menu, tearoff=0)
         theme_menu.add_radiobutton(label="Light", variable=self.theme_var, value=1, command=self.toggle_theme)
         theme_menu.add_radiobutton(label="Dark", variable=self.theme_var, value=2, command=self.toggle_theme)
-        theme_menu.add_radiobutton(label="Custom", variable=self.theme_var, value=3, command=self.update_highlight_colors)
+        theme_menu.add_radiobutton(label="Custom", variable=self.theme_var, value=3, command=self.choose_custom_theme)
         settings_menu.add_cascade(label="Theme", menu=theme_menu)
         self.main_menu.add_cascade(label="Settings", menu=settings_menu)
-
-        about_menu = Menu(self.main_menu, tearoff=0)
-        about_menu.add_command(label="About", command=self.show_about)
-        self.main_menu.add_cascade(label="About", menu=about_menu)
 
         self.root.config(menu=self.main_menu)
 
@@ -140,45 +129,13 @@ class CodeEditor:
 
         self.highlight_text()
 
-    def choose_highlight_colors(self):
-        colors = {}
-        for key in self.highlight_rules.keys():
-            color = colorchooser.askcolor(title=f"Choose color for {key}")
-            if color[1]:
-                colors[key] = color[1]
-        return colors
-
-    def update_highlight_colors(self):
-        theme_tags = self.light_theme_tags if self.theme_var.get() == 1 else self.dark_theme_tags
-        theme_tags.update(self.choose_highlight_colors())
-        self.highlight_text()
-
-    def enable_auto_completion(self, event):
-        # Get the current line before the cursor
-        current_line = self.text_editor.get("insert linestart", "insert")
-
-        # Check if the current line ends with a known Python keyword
-        for keyword in ["if", "elif", "else", "for", "while", "def", "class", "try", "except", "with", "import", "from"]:
-            if current_line.endswith(keyword):
-                self.text_editor.insert("insert", " ")  # Add a space after the keyword
-                return "break"  # Prevent default insertion behavior
-
-    def find_and_replace(self):
-        # Prompt user for text to find
-        search_text = simpledialog.askstring("Find", "Enter text to find:")
-        if search_text:
-            # Get all occurrences of the search text
-            start_index = "1.0"
-            while True:
-                start_index = self.text_editor.search(search_text, start_index, stopindex=END)
-                if not start_index:
-                    break
-                end_index = self.text_editor.index(f"{start_index}+{len(search_text)}c")
-                self.text_editor.tag_add("found", start_index, end_index)
-                start_index = end_index
-
-            # Highlight all occurrences
-            self.text_editor.tag_config("found", background="yellow", foreground="black")
+    def choose_custom_theme(self):
+        color = colorchooser.askcolor(title="Choose Color")
+        if color[1]:
+            self.root.config(bg=color[1])
+            self.text_editor.config(bg=color[1])
+            self.line_numbers.config(bg=color[1])
+            self.console.config(bg=color[1])
 
     def new_file(self):
         # Clear the text editor
@@ -217,62 +174,8 @@ class CodeEditor:
             file.write(self.text_editor.get(1.0, END))
 
         # Execute the code using the default Python interpreter
-        process = subprocess.Popen(["python", "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-
-        # Display output in console
-        self.console.config(state='normal')
-        self.console.delete('1.0', END)
-        if stdout:
-            self.console.insert(END, f"Output:\n{stdout.decode()}\n")
-        if stderr:
-            self.console.insert(END, f"Error:\n{stderr.decode()}\n")
-        self.console.config(state='disabled')
-
-        # Remove temporary file
+        subprocess.run(["python", "temp_code.py"])
         os.remove("temp_code.py")
-
-    def syntax_check(self):
-        # Save the code to a temporary file
-        with open("temp_code.py", "w") as file:
-            file.write(self.text_editor.get(1.0, END))
-
-        # Check syntax using Python's built-in syntax checker
-        try:
-            subprocess.run(["python", "-m", "py_compile", "temp_code.py"], check=True)
-            messagebox.showinfo("Syntax Check", "No syntax errors found.")
-        except subprocess.CalledProcessError:
-            messagebox.showerror("Syntax Check", "Syntax error(s) found. Please check your code.")
-        finally:
-            os.remove("temp_code.py")
-
-    def show_about(self):
-        about_window = Toplevel(self.root)
-        about_window.title("About")
-        about_window.geometry("600x400")
-
-        about_description = """
-        Code Editor by Timur Hromek
-        Created at the age of 14
-
-        I developed this code editor out of frustration with existing editors. 
-        They weren't lightweight, fast, or good enough for my needs, so I decided 
-        to create my own. This editor is designed to provide a seamless coding 
-        experience with a focus on speed and functionality.
-        """
-
-        about_label = Label(about_window, text=about_description, justify='left', wraplength=500)
-        about_label.pack(padx=10, pady=10)
-
-    def set_window_icon(self, icon_path):
-        # Load the ICO file
-        icon = Image.open(icon_path)
-
-        # Convert the ICO file to a Tkinter-compatible format
-        icon_photo = ImageTk.PhotoImage(icon)
-
-        # Set the window icon
-        self.root.iconphoto(True, icon_photo)
 
 
 def main():
