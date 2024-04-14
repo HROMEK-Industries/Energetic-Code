@@ -1,7 +1,7 @@
 import os
 import subprocess
 import re
-from tkinter import Tk, Text, Menu, filedialog, messagebox, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, Toplevel, colorchooser
+from tkinter import Tk, Text, Menu, filedialog, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, colorchooser
 
 class CodeEditor:
     def __init__(self, root):
@@ -173,10 +173,29 @@ class CodeEditor:
         with open("temp_code.py", "w") as file:
             file.write(self.text_editor.get(1.0, END))
 
-        # Execute the code using the default Python interpreter
-        subprocess.run(["python", "temp_code.py"])
-        os.remove("temp_code.py")
+        try:
+            # Execute the code using the default Python interpreter
+            process = subprocess.Popen(["python", "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate()
 
+            # Display output and errors in the console
+            self.console.config(state='normal')
+            self.console.delete(1.0, END)
+            self.console.insert(END, stdout)
+            if stderr:
+                self.console.insert(END, stderr, 'error')
+            self.console.config(state='disabled')
+
+        except Exception as e:
+            # Display error if execution fails
+            self.console.config(state='normal')
+            self.console.delete(1.0, END)
+            self.console.insert(END, f"Error occurred: {str(e)}")
+            self.console.config(state='disabled')
+
+        finally:
+            # Remove temporary file
+            os.remove("temp_code.py")
 
 def main():
     root = Tk()
