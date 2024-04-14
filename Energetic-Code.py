@@ -1,6 +1,7 @@
 import os
 import subprocess
 import re
+import sys
 from tkinter import Tk, Text, Menu, filedialog, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, colorchooser
 
 class CodeEditor:
@@ -174,8 +175,11 @@ class CodeEditor:
             file.write(self.text_editor.get(1.0, END))
 
         try:
-            # Execute the code using the default Python interpreter
-            process = subprocess.Popen(["python", "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Get the full path to the Python executable
+            python_executable = sys.executable if hasattr(sys, 'frozen') else sys.executable
+
+            # Execute the code using the Python interpreter
+            process = subprocess.Popen([python_executable, "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             stdout, stderr = process.communicate()
 
             # Display output and errors in the console
