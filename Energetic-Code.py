@@ -1,5 +1,7 @@
 import tkinter as tk
+import sys
 from tkinter import ttk
+from io import StringIO
 
 #window
 window = tk.Tk()
@@ -11,20 +13,24 @@ theme = tk.IntVar()
 theme.set(1)
 console_position = tk.IntVar()
 console_position.set(4)
+console_output = StringIO()
 
 #functions
-def run(event=None):
+def run():
     terminal_block.config(state="normal")
     terminal_block.delete(1.0,tk.END)
-    code_data = block_txt.get("1.0", "end-1c")
+    code_data = block_txt.get(1.0, tk.END)
+
     try:
-
-        # exec(code_data) #executer code
-        terminal_block.insert("end", str(exec(code_data)))
-
+        sys.stdout = console_output
+        exec(code_data)
+        console_text = console_output.getvalue()
+        terminal_block.insert("end", str(console_text))
+        terminal_block.config(state="disable")
     except Exception as e:
         terminal_block.insert("end", f"Error: {str(e)}\n")
         terminal_block.config(state="disable")
+
 
 
 def new_file_clicked(event=None):
