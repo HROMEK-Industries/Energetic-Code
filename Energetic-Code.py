@@ -2,6 +2,7 @@ from tkinter import ttk,filedialog
 from io import StringIO
 import tkinter as tk
 import sys
+import re
 
 #window
 window = tk.Tk()
@@ -18,6 +19,16 @@ theme = tk.IntVar()
 theme.set(1)
 light_theme = {"editor_bg": "#f6f6f6","editor_fg": "#000000","console_bg": "#d0d0d0","console_fg": "#000000","mark": "#000000"}
 dark_theme = {"editor_bg": "#393e46","editor_fg": "#f7f7f7","console_bg": "#393e46","console_fg": "#f7f7f7", "mark": "#f7f7f7"}
+
+keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"],
+
+highlight_color = {
+    "keywords" : "",
+    "comment" : "",
+    "variable" : "",
+    "string" : ""
+}
+
 #functions
 
 #file functions
@@ -26,6 +37,7 @@ def run(event=None):
     code_data = editor_block.get(1.0, tk.END)
     terminal_block.delete(1.0,tk.END)
     try:
+        terminal_block.delete(1.0,tk.END)
         sys.stdout = console_output
         exec(code_data)
         console_text = console_output.getvalue()
@@ -69,9 +81,12 @@ def open_file(event=None):
 def select_all(event=None):
     editor_block.tag_add("sel", "1.0", "end")
 
+def add_indetations():
+
+    print("hey")
+
 #theme
 def themes_function():
-    print(theme)
     if theme.get() == 1:
         editor_block.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
         terminal_block.config(bg=light_theme["console_bg"], fg=light_theme["console_fg"])
@@ -79,6 +94,38 @@ def themes_function():
         editor_block.config(bg=dark_theme["editor_bg"], fg=dark_theme["editor_fg"],insertbackground=dark_theme["mark"])
         terminal_block.config(bg=dark_theme["console_bg"], fg=dark_theme["console_fg"])
 
+def highlight_function(event=None):
+    #suprime les tags existants
+    editor_block.tag_remove("keyword", 1.0, tk.END)
+    editor_block.tag_remove("string", 1.0, tk.END)
+    editor_block.tag_remove("comment", 1.0, tk.END)
+
+    code_data = editor_block.get(1.0, tk.END)
+
+    #divides the code in lines
+    lines = code_data.split("\n")
+    
+    words = code_data.split()
+    for index, word in enumerate(words):
+        if word == "if":
+            start_index = f"1.{code_data.index(word, index)}"
+            end_index = f"{start_index}+{len(word)}c"
+            editor_block.tag_add("keyword", start_index, end_index)
+            editor_block.tag_config("keyword", foreground="red")
+    for i, line in enumerate(lines, 1):
+
+        for string in re.finditer(r'(\'[^\']*\'|\"[^\"]*\")', line):
+            first_str = f"{i}.{string.start()}" 
+            last_str = f"{i}.{string.end()}"
+            editor_block.tag_add("string", first_str, last_str)
+        for comment in re.finditer(r'(#.*)', line):
+            begin_comment = f"{i}.{comment.start()}"
+            end_comment = f"{i}.end"
+            editor_block.tag_add("comment", begin_comment, end_comment)
+    #apply the color
+    editor_block.tag_configure("keyword", foreground="orange")
+    editor_block.tag_configure("string", foreground="green")
+    editor_block.tag_configure("comment", foreground="gray")
 
 #Create the top bar
 menu_bar = tk.Menu()
@@ -130,6 +177,7 @@ window.bind_all("<Control-o>", open_file)
 window.bind_all("<Control-O>", open_file)
 window.bind_all("<Control-a>", select_all)
 window.bind_all("<Control-A>", select_all)
+editor_block.bind("<KeyRelease>", highlight_function)
 # window.bind_all("<Control-slash>", comment_line)
 # window.bind_all("<Control-slash>", comment_line)
 
