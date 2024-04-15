@@ -17,11 +17,10 @@ console_position.set(4)
 console_output = StringIO()
 
 #functions
-def run():
+def run(event=None):
     terminal_block.config(state="normal")
     terminal_block.delete(1.0,tk.END)
     code_data = editor_block.get(1.0, tk.END)
-
     try:
         sys.stdout = console_output
         exec(code_data)
@@ -32,29 +31,34 @@ def run():
         terminal_block.insert("end", f"Error: {str(e)}\n")
         terminal_block.config(state="disable")
 
-def new_file():
+def new_file(event=None):
     global file_path
     editor_block.delete(1.0, tk.END)
     file_path = None
     print("new file :" +str(file_path))
 
-
-def save_file():
+def save_file(event=None):
     if file_path != None:
         with open(str(file_path), "w") as f:
             f.write(editor_block.get(1.0, tk.END))
+    else :
+        save_as()
     print("save :" +str(file_path))
 
-def save_as():
+def save_as(event=None):
     global file_path
     file_path = tk.filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python files", "*.py")])
     print("save as :" + file_path)
     with open(str(file_path), "w") as f:
         f.write(editor_block.get(1.0, tk.END))
 
-def open_file():
+def open_file(event=None):
     global file_path
     file_path = filedialog.askopenfilename(filetypes=[("Python files", "*.py")])
+    with open(file_path, "r") as f:
+        content = f.read()
+        editor_block.delete(1.0, tk.END)
+        editor_block.insert(tk.END, content)
     print("save as :" +str(file_path))
 
 
@@ -96,8 +100,18 @@ terminal_block = tk.Text(window,bg="gainsboro",state="disabled")
 terminal_block.pack(fill="both")
 
 #shortcuts
+window.bind_all("<F5>", run)
+window.bind_all("<Control-5>", run)
 window.bind_all("<Control-n>", new_file)
 window.bind_all("<Control-N>", new_file)
+window.bind_all("<Control-s>", save_file)
+window.bind_all("<Control-S>", save_file)
+window.bind_all("<Shift-Control-s>", save_as)
+window.bind_all("<Shift-Control-S>", save_as)
+window.bind_all("<Control-o>", open_file)
+window.bind_all("<Control-O>", open_file)
+
+
 
 #run the program
 window.config(menu=menu_bar)
