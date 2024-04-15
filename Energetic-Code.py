@@ -1,7 +1,7 @@
+from tkinter import ttk,filedialog
+from io import StringIO
 import tkinter as tk
 import sys
-from tkinter import ttk
-from io import StringIO
 
 #window
 window = tk.Tk()
@@ -9,6 +9,7 @@ window.title("Energetic-Code")
 window.geometry("800x600")
 
 #variables
+file_path = None
 theme = tk.IntVar()
 theme.set(1)
 console_position = tk.IntVar()
@@ -19,7 +20,7 @@ console_output = StringIO()
 def run():
     terminal_block.config(state="normal")
     terminal_block.delete(1.0,tk.END)
-    code_data = block_txt.get(1.0, tk.END)
+    code_data = editor_block.get(1.0, tk.END)
 
     try:
         sys.stdout = console_output
@@ -31,29 +32,40 @@ def run():
         terminal_block.insert("end", f"Error: {str(e)}\n")
         terminal_block.config(state="disable")
 
+def new_file():
+    global file_path
+    editor_block.delete(1.0, tk.END)
+    file_path = None
+    print("new file :" +str(file_path))
 
 
-def new_file_clicked(event=None):
-    print("hey")
-
-def save():
-    print("save")
+def save_file():
+    if file_path != None:
+        with open(str(file_path), "w") as f:
+            f.write(editor_block.get(1.0, tk.END))
+    print("save :" +str(file_path))
 
 def save_as():
-    print("save_as")
+    global file_path
+    file_path = tk.filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python files", "*.py")])
+    print("save as :" + file_path)
+    with open(str(file_path), "w") as f:
+        f.write(editor_block.get(1.0, tk.END))
 
+def open_file():
+    global file_path
+    file_path = filedialog.askopenfilename(filetypes=[("Python files", "*.py")])
+    print("save as :" +str(file_path))
 
-def open():
-    print("open")
 
 #Create the top bar
 menu_bar = tk.Menu()
 #file
 file_menu = tk.Menu(menu_bar, tearoff=False)
-file_menu.add_command(label="New",accelerator="Ctrl+N",command=new_file_clicked)
-file_menu.add_command(label="Save",accelerator="Ctrl+S",command=save)
+file_menu.add_command(label="New",accelerator="Ctrl+N",command=new_file)
+file_menu.add_command(label="Save",accelerator="Ctrl+S",command=save_file)
 file_menu.add_command(label="Save_as",accelerator="Shift+Ctrl+A",command=save_as)
-file_menu.add_command(label="open",accelerator="Ctrl+O",command="open")
+file_menu.add_command(label="open",accelerator="Ctrl+O",command=open_file)
 file_menu.add_separator()
 file_menu.add_command(label="Exit",accelerator=None, command=exit)
 menu_bar.add_cascade(menu=file_menu, label="File")
@@ -76,16 +88,16 @@ preferences_menu.add_cascade(menu=theme_menu,label="Themes")
 preferences_menu.add_cascade(menu=console_position_menu,label="Console position")
 
 #block text
-block_txt = tk.Text(window,bg="snow")
-block_txt.pack(fill="both")
+editor_block = tk.Text(window,bg="snow")
+editor_block.pack(fill="both")
 
 #terminal block
 terminal_block = tk.Text(window,bg="gainsboro",state="disabled")
 terminal_block.pack(fill="both")
 
 #shortcuts
-window.bind_all("<Control-n>", new_file_clicked)
-window.bind_all("<Control-N>", new_file_clicked)
+window.bind_all("<Control-n>", new_file)
+window.bind_all("<Control-N>", new_file)
 
 #run the program
 window.config(menu=menu_bar)
