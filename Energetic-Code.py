@@ -33,30 +33,30 @@ highlight_color = {
 
 #file functions
 def run(event=None):
-    terminal_block.config(state="normal")
-    code_data = editor_block.get(1.0, tk.END)
-    terminal_block.delete(1.0,tk.END)
+    terminal_text.config(state="normal")
+    terminal_text.delete(1.0,tk.END)
+    code_data = editor_text.get(1.0, tk.END)
     try:
-        terminal_block.delete(1.0,tk.END)
         sys.stdout = console_output
         exec(code_data)
         console_text = console_output.getvalue()
-        terminal_block.insert("end", str(console_text))
-        terminal_block.config(state="disable")
+        terminal_text.insert("end", str(console_text))
+        terminal_text.config(state="disable")
     except Exception as e:
-        terminal_block.insert("end", f"Error: {str(e)}\n")
-        terminal_block.config(state="disable")
+        terminal_text.insert("end", f"Error: {str(e)}\n")
+        terminal_text.config(state="disable")
 
 def new_file(event=None):
     global file_path
-    editor_block.delete(1.0, tk.END)
+    editor_text.delete(1.0, tk.END)
+    editor_text.insert(1.0, "#write your code here")
     file_path = None
     print("new file :" +str(file_path))
 
 def save_file(event=None):
     if file_path != None or "":
         with open(str(file_path), "w") as f:
-            f.write(editor_block.get(1.0, tk.END))
+            f.write(editor_text.get(1.0, tk.END))
     else :
         save_as()
     print("save :" +str(file_path))
@@ -66,20 +66,20 @@ def save_as(event=None):
     file_path = tk.filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python files", "*.py")])
     print("save as :" + file_path)
     with open(str(file_path), "w") as f:
-        f.write(editor_block.get(1.0, tk.END))
+        f.write(editor_text.get(1.0, tk.END))
 
 def open_file(event=None):
     global file_path
     file_path = filedialog.askopenfilename(filetypes=[("Python files", "*.py")])
     with open(file_path, "r") as f:
         content = f.read()
-        editor_block.delete(1.0, tk.END)
-        editor_block.insert(tk.END, content)
+        editor_text.delete(1.0, tk.END)
+        editor_text.insert(tk.END, content)
     print("save as :" +str(file_path))
 
 #editor functions
 def select_all(event=None):
-    editor_block.tag_add("sel", "1.0", "end")
+    editor_text.tag_add("sel", "1.0", "end")
 
 def add_indetations():
 
@@ -88,19 +88,19 @@ def add_indetations():
 #theme
 def themes_function():
     if theme.get() == 1:
-        editor_block.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
-        terminal_block.config(bg=light_theme["console_bg"], fg=light_theme["console_fg"])
+        editor_text.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
+        terminal_text.config(bg=light_theme["console_bg"], fg=light_theme["console_fg"])
     elif theme.get() ==2:
-        editor_block.config(bg=dark_theme["editor_bg"], fg=dark_theme["editor_fg"],insertbackground=dark_theme["mark"])
-        terminal_block.config(bg=dark_theme["console_bg"], fg=dark_theme["console_fg"])
+        editor_text.config(bg=dark_theme["editor_bg"], fg=dark_theme["editor_fg"],insertbackground=dark_theme["mark"])
+        terminal_text.config(bg=dark_theme["console_bg"], fg=dark_theme["console_fg"])
 
 def highlight_function(event=None):
     #suprime les tags existants
-    editor_block.tag_remove("keyword", 1.0, tk.END)
-    editor_block.tag_remove("string", 1.0, tk.END)
-    editor_block.tag_remove("comment", 1.0, tk.END)
+    editor_text.tag_remove("keyword", 1.0, tk.END)
+    editor_text.tag_remove("string", 1.0, tk.END)
+    editor_text.tag_remove("comment", 1.0, tk.END)
 
-    code_data = editor_block.get(1.0, tk.END)
+    code_data = editor_text.get(1.0, tk.END)
 
     #divides the code in lines
     lines = code_data.split("\n")
@@ -110,22 +110,22 @@ def highlight_function(event=None):
         if word == "if":
             start_index = f"1.{code_data.index(word, index)}"
             end_index = f"{start_index}+{len(word)}c"
-            editor_block.tag_add("keyword", start_index, end_index)
-            editor_block.tag_config("keyword", foreground="red")
+            editor_text.tag_add("keyword", start_index, end_index)
+            editor_text.tag_config("keyword", foreground="red")
     for i, line in enumerate(lines, 1):
 
         for string in re.finditer(r'(\'[^\']*\'|\"[^\"]*\")', line):
             first_str = f"{i}.{string.start()}" 
             last_str = f"{i}.{string.end()}"
-            editor_block.tag_add("string", first_str, last_str)
+            editor_text.tag_add("string", first_str, last_str)
         for comment in re.finditer(r'(#.*)', line):
             begin_comment = f"{i}.{comment.start()}"
             end_comment = f"{i}.end"
-            editor_block.tag_add("comment", begin_comment, end_comment)
+            editor_text.tag_add("comment", begin_comment, end_comment)
     #apply the color
-    editor_block.tag_configure("keyword", foreground="orange")
-    editor_block.tag_configure("string", foreground="green")
-    editor_block.tag_configure("comment", foreground="gray")
+    editor_text.tag_configure("keyword", foreground="orange")
+    editor_text.tag_configure("string", foreground="green")
+    editor_text.tag_configure("comment", foreground="gray")
 
 #Create the top bar
 menu_bar = tk.Menu()
@@ -157,16 +157,26 @@ preferences_menu.add_cascade(menu=theme_menu,label="Themes")
 preferences_menu.add_cascade(menu=console_position_menu,label="Console position")
 
 #block text
-editor_block = tk.Text(window)
-editor_block.pack(fill="both")
+editor_Frame = tk.Frame(window)
+editor_Frame.pack(expand=True,fill="both",padx=(5, 0))
+editor_text = tk.Text(editor_Frame)
+editor_text.pack(fill="both",expand=True)
+lines_number = tk.Canvas(editor_Frame,width=100)
+lines_number.pack(side="left",fill="y")
+
 
 #terminal block
-terminal_block = tk.Text(window,bg="gainsboro",state="disabled")
-terminal_block.pack(fill="both")
+terminal_frame = tk.Frame(window)
+terminal_frame.pack(expand=True,fill="both",padx=(5, 0), pady=(0, 5))
+terminal_label = tk.Label(terminal_frame, text="console output:")
+terminal_label.pack(anchor="w")
+terminal_text = tk.Text(terminal_frame,wrap="word",bg="gainsboro",state="disabled")
+terminal_text.pack(fill="both")
+
 
 #shortcuts
 window.bind_all("<F5>", run)
-window.bind_all("<Control-5>", run)
+window.bind_all("<Control-Key-5>", run)
 window.bind_all("<Control-n>", new_file)
 window.bind_all("<Control-N>", new_file)
 window.bind_all("<Control-s>", save_file)
@@ -177,15 +187,16 @@ window.bind_all("<Control-o>", open_file)
 window.bind_all("<Control-O>", open_file)
 window.bind_all("<Control-a>", select_all)
 window.bind_all("<Control-A>", select_all)
-editor_block.bind("<KeyRelease>", highlight_function)
+editor_text.bind("<KeyRelease>", highlight_function)
 # window.bind_all("<Control-slash>", comment_line)
 # window.bind_all("<Control-slash>", comment_line)
 
 
 
 #run the program
-# editor_block.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
-# terminal_block.config(bg=light_theme["console_bg"])
+# editor_text.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
+# terminal_text.config(bg=light_theme["console_bg"])
 window.config(menu=menu_bar)
 themes_function()
+new_file()
 window.mainloop()
