@@ -19,19 +19,28 @@ console_output = StringIO()
 
 theme = tk.IntVar()
 theme.set(1)
-light_theme = {"editor_bg": "#f6f6f6","editor_fg": "#000000","console_bg": "#d0d0d0","console_fg": "#000000","mark": "#000000"}
+light_theme = {"editor_frame": "#f3f3f3",
+               "editor_number_bg": "ffffff",
+               "editor_number_fg": "#76c3df",
+               "editor_text_bg": "#ffffff",
+               "editor_text_fg": "#464646",
+               "console_frame":"#f3f3f3",
+               "console_label": "#d8d8d8",
+               "console_bg":"#ffffff", 
+               "console_fg": "#605664",
+               "mark": "#1b1b1b",
+               "keyword": "#3d5aff",
+               "bool": "#873dff",
+               "string": "#dd4141",
+               "comment": "#3cc827"}
+
 dark_theme = {"editor_bg": "#393e46","editor_fg": "#f7f7f7","console_bg": "#393e46","console_fg": "#f7f7f7", "mark": "#f7f7f7"}
 police_default = ("Segoe", 12)
 
 # keywords =  re.compile(r'\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b'),
 keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"]
 
-highlight_color = {
-    "keywords" : "",
-    "comment" : "",
-    "bool" : "",
-    "string" : ""
-}
+
 
 #functions
 def KeyRelease_function(event=None):
@@ -117,7 +126,8 @@ def add_numbers_line(event=None):
 #theme
 def themes_function():
     if theme.get() == 1:
-        editor_text.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
+        #for text editor
+        editor_text.config(bg=light_theme["editor_text_bg"], fg=light_theme["editor_text_fg"],insertbackground=light_theme["mark"])
         terminal_text.config(bg=light_theme["console_bg"], fg=light_theme["console_fg"])
     elif theme.get() ==2:
         editor_text.config(bg=dark_theme["editor_bg"], fg=dark_theme["editor_fg"],insertbackground=dark_theme["mark"])
@@ -125,12 +135,11 @@ def themes_function():
 
 #still in progress
 def highlight_function(event=None):
-    #suprime les tags existants
+    #deletes the existant tags
     editor_text.tag_remove("keyword", 1.0, tk.END)
     editor_text.tag_remove("string", 1.0, tk.END)
     editor_text.tag_remove("comment", 1.0, tk.END)
     editor_text.tag_remove("bool", 1.0, tk.END)
-
 
     code_data = editor_text.get(1.0, tk.END)
 
@@ -146,13 +155,10 @@ def highlight_function(event=None):
                 start_index = "{}.{}".format(i, match.start())
                 end_index = "{}.{}".format(i, match.end())
                 
-                if match != "True" or "False":
-                    editor_text.tag_add("bool", start_index, end_index)
-                    # print(match)
-
-                else:
+                if match.group(0) != "True" and match.group(0) != "False":
                     editor_text.tag_add("keyword", start_index, end_index)
-                    # print("red")
+                else:
+                    editor_text.tag_add("bool", start_index, end_index)
 
         #for strings
         for string in re.finditer(r'(\'[^\']*\'|\"[^\"]*\")', line):
@@ -165,11 +171,10 @@ def highlight_function(event=None):
             end_comment = f"{i}.end"
             editor_text.tag_add("comment", begin_comment, end_comment)
     #apply the color
-    editor_text.tag_configure("keyword", foreground="orange")
-    editor_text.tag_configure("string", foreground="green")
-    editor_text.tag_configure("comment", foreground="gray")
-    editor_text.tag_configure("bool", foreground="orange")
-
+    editor_text.tag_configure("bool", foreground=light_theme["bool"])
+    editor_text.tag_configure("keyword", foreground=light_theme["keyword"])
+    editor_text.tag_configure("string", foreground=light_theme["string"])
+    editor_text.tag_configure("comment", foreground=light_theme["comment"])
 
 #Create the top bar
 menu_bar = tk.Menu()
@@ -201,14 +206,14 @@ preferences_menu.add_cascade(menu=theme_menu,label="Themes")
 preferences_menu.add_cascade(menu=console_position_menu,label="Console position(in progress)")
 
 #block text
-editor_Frame = tk.Frame(window)
-editor_Frame.pack(fill="both")
+editor_Frame = tk.Frame(window,bg="red")
+editor_Frame.pack(fill="both",expand=True)
 
 lines_number_canva = tk.Canvas(editor_Frame,width=30)
 lines_number_canva.pack(side="left",pady=10,fill="y")
 
-editor_text = tk.Text(editor_Frame, font=police_default)
-editor_text.pack(side="left",pady=10,fill="both")
+editor_text = tk.Text(editor_Frame, font=police_default,undo=True)
+editor_text.pack(side="left",pady=10,fill="both",expand=True)
 
 
 # #terminal block
@@ -216,7 +221,7 @@ terminal_frame = tk.Frame(window)
 terminal_frame.pack(expand=True,fill="both",padx=(5, 0),pady=(0,5))
 terminal_label = tk.Label(terminal_frame, text="console output:")
 terminal_label.pack(anchor="w")
-terminal_text = tk.Text(terminal_frame,wrap="word",bg="gainsboro",state="disabled")
+terminal_text = tk.Text(terminal_frame,bg="gainsboro",state="disabled")
 terminal_text.pack(fill="both")
 
 
@@ -234,18 +239,10 @@ window.bind_all("<Control-O>", open_file)
 window.bind_all("<Control-a>", select_all)
 window.bind_all("<Control-A>", select_all)
 editor_text.bind("<KeyRelease>", KeyRelease_function)
-# editor_text.bind("<<Modified>>", add_numbers_line)
-# editor_text.bind("<KeyRelease>", add_numbers_line)
-
-
 # window.bind_all("<Control-slash>", comment_line)
 # window.bind_all("<Control-slash>", comment_line)
 
 
-
-#run the program
-# editor_text.config(bg=light_theme["editor_bg"], fg=light_theme["editor_fg"],insertbackground=light_theme["mark"])
-# terminal_text.config(bg=light_theme["console_bg"])
 window.config(menu=menu_bar)
 themes_function()
 new_file()
