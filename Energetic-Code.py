@@ -23,7 +23,8 @@ light_theme = {"editor_bg": "#f6f6f6","editor_fg": "#000000","console_bg": "#d0d
 dark_theme = {"editor_bg": "#393e46","editor_fg": "#f7f7f7","console_bg": "#393e46","console_fg": "#f7f7f7", "mark": "#f7f7f7"}
 police_default = ("Segoe", 12)
 
-keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"],
+# keywords =  re.compile(r'\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b'),
+keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"]
 
 highlight_color = {
     "keywords" : "",
@@ -126,15 +127,17 @@ def highlight_function(event=None):
 
     #divides the code in lines
     lines = code_data.split("\n")
-    
-    words = code_data.split()
-    for index, word in enumerate(words):
-        if word == "if":
-            start_index = f"1.{code_data.index(word, index)}"
-            end_index = f"{start_index}+{len(word)}c"
-            editor_text.tag_add("keyword", start_index, end_index)
-            editor_text.tag_config("keyword")
+
     for i, line in enumerate(lines, 1):
+        for keyword in keywords:
+        # searches word in the text belonging to keywords list
+            for match in re.finditer(r'\b{}\b'.format(keyword), line):
+               
+               start_index = "{}.{}".format(i, match.start())
+               end_index = "{}.{}".format(i, match.end())
+               editor_text.tag_add("keyword", start_index, end_index)
+    
+
 
         for string in re.finditer(r'(\'[^\']*\'|\"[^\"]*\")', line):
             first_str = f"{i}.{string.start()}" 
