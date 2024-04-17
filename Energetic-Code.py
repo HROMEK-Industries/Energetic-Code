@@ -1,4 +1,4 @@
-from tkinter import ttk,filedialog
+from tkinter import ttk,filedialog,font
 from io import StringIO
 import tkinter as tk
 import sys
@@ -15,10 +15,13 @@ console_position = tk.IntVar()
 console_position.set(4)
 console_output = StringIO()
 
+
+
 theme = tk.IntVar()
 theme.set(1)
 light_theme = {"editor_bg": "#f6f6f6","editor_fg": "#000000","console_bg": "#d0d0d0","console_fg": "#000000","mark": "#000000"}
 dark_theme = {"editor_bg": "#393e46","editor_fg": "#f7f7f7","console_bg": "#393e46","console_fg": "#f7f7f7", "mark": "#f7f7f7"}
+police_default = ("Segoe", 12)
 
 keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"],
 
@@ -85,6 +88,25 @@ def add_indetations():
 
     print("hey")
 
+def add_numbers_line(event=None):
+    # Effacer les anciens numéros de ligne
+    lines_number_canva.delete("numero_ligne")
+    
+    # Obtenir les coordonnées y de la première ligne affichée dans le widget de texte
+    y0 = editor_text.yview()[0] * line_height
+    # Obtenir les coordonnées y dtext dernière ligne affichée dans le widget de texte
+    y1 = editor_text.yview()[1] * line_height
+    # Nombre de lignes visibles dans le widget de texte
+    first_visible_line = int(y0 // line_height) + 1
+    last_visible_line = int(y1 // line_height) + 1
+    
+    for i in range(first_visible_line, last_visible_line + 1):  # Afficher les numéros de ligne
+        print(i)
+        # Calculer les coordonnées y pour chaque numéro de ligne
+        y = (i - first_visible_line) * line_height
+        # Afficher le numéro de ligne dans le lines_number_canva à la position (5, y)
+        lines_number_canva.create_text(5, y, anchor="nw", text=str(i), tags="numero_ligne")
+        
 #theme
 def themes_function():
     if theme.get() == 1:
@@ -111,7 +133,7 @@ def highlight_function(event=None):
             start_index = f"1.{code_data.index(word, index)}"
             end_index = f"{start_index}+{len(word)}c"
             editor_text.tag_add("keyword", start_index, end_index)
-            editor_text.tag_config("keyword", foreground="red")
+            editor_text.tag_config("keyword")
     for i, line in enumerate(lines, 1):
 
         for string in re.finditer(r'(\'[^\']*\'|\"[^\"]*\")', line):
@@ -158,16 +180,30 @@ preferences_menu.add_cascade(menu=console_position_menu,label="Console position"
 
 #block text
 editor_Frame = tk.Frame(window)
-editor_Frame.pack(expand=True,fill="both",padx=(5, 0))
-editor_text = tk.Text(editor_Frame)
-editor_text.pack(fill="both",expand=True)
-lines_number = tk.Canvas(editor_Frame,width=100)
-lines_number.pack(side="left",fill="y")
+editor_Frame.pack(fill="both")
+
+lines_number_canva = tk.Canvas(editor_Frame,width=30)
+lines_number_canva.pack(side="left",pady=10,fill="y")
+
+editor_text = tk.Text(editor_Frame, font=police_default)
+editor_text.pack(side="left",pady=10,fill="both")
 
 
-#terminal block
+lines_number_canva.config(bg="Blue")
+
+text_high = editor_text.winfo_height()
+amount_of_lines = int(editor_text.index('end-1c').split('.')[0])
+police = editor_text.cget("font")
+if police:
+    # Extraire la hauteur de ligne de la police
+    line_height = tk.font.Font(font=police).metrics("linespace")
+else:
+    # Utiliser une hauteur de ligne par défaut si la police n'est pas définie
+    line_height = 20  # Vous pouvez ajuster cette valeur selon votre besoin
+
+# #terminal block
 terminal_frame = tk.Frame(window)
-terminal_frame.pack(expand=True,fill="both",padx=(5, 0), pady=(0, 5))
+terminal_frame.pack(expand=True,fill="both",padx=(5, 0),pady=(0,5))
 terminal_label = tk.Label(terminal_frame, text="console output:")
 terminal_label.pack(anchor="w")
 terminal_text = tk.Text(terminal_frame,wrap="word",bg="gainsboro",state="disabled")
@@ -188,6 +224,8 @@ window.bind_all("<Control-O>", open_file)
 window.bind_all("<Control-a>", select_all)
 window.bind_all("<Control-A>", select_all)
 editor_text.bind("<KeyRelease>", highlight_function)
+# editor_text.bind("<<Modified>>", add_numbers_line)
+
 # window.bind_all("<Control-slash>", comment_line)
 # window.bind_all("<Control-slash>", comment_line)
 
