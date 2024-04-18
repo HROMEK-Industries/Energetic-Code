@@ -15,17 +15,19 @@ console_position = tk.IntVar()
 console_position.set(4)
 console_output = StringIO()
 
-
-
 theme = tk.IntVar()
 theme.set(1)
-light_theme = {"editor_frame": "#f3f3f3",
-               "editor_number_bg": "ffffff",
+light_theme = {"window_bg": "#f3f3f3",
+               "menu_bar_bg":"#f3f3f3",
+               "menu_bar_fg":"#464646",
+               "editor_frame": "#f3f3f3",
+               "editor_number_bg": "#ffffff",
                "editor_number_fg": "#76c3df",
+               "editor_number_border": "#F5F5F5",
                "editor_text_bg": "#ffffff",
                "editor_text_fg": "#464646",
                "console_frame":"#f3f3f3",
-               "console_label": "#d8d8d8",
+               "console_label": "#3F3F3F",
                "console_bg":"#ffffff", 
                "console_fg": "#464646",
                "mark": "#1b1b1b",
@@ -34,8 +36,28 @@ light_theme = {"editor_frame": "#f3f3f3",
                "string": "#dd4141",
                "comment": "#3cc827"}
 
-dark_theme = {"editor_bg": "#393e46","editor_fg": "#f7f7f7","console_bg": "#393e46","console_fg": "#f7f7f7", "mark": "#f7f7f7"}
-police_default = ("Segoe", 12)
+dark_theme = {"window_bg": "#343434",
+               "menu_bar_bg":"#343434",
+               "menu_bar_fg":"#F7F7F7",
+               "editor_frame": "#1e1e1e",
+               "editor_number_bg": "#464646",
+               "editor_number_fg": "#76c3df",
+               "editor_number_border": "#3E3E3E",
+               "editor_text_bg": "#464646",
+               "editor_text_fg": "#F7F7F7",
+               "console_frame":"#343434",
+               "console_label": "#d8d8d8",
+               "console_bg":"#464646", 
+               "console_fg": "#F7F7F7",
+               "mark": "#FFFFFF",
+               "keyword": "#F99216",
+               "bool": "#F95E16",
+               "string": "#72D532",
+               "comment": "#797979"}
+
+selected_theme = None
+
+police_default = ("Helvetica", 12)
 
 # keywords =  re.compile(r'\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b'),
 keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"]
@@ -49,16 +71,18 @@ def KeyRelease_function(event=None):
 
 #file functions
 def run(event=None):
+    sys.stdout = console_output
+    console_text = console_output.getvalue()
     terminal_text.config(state="normal")
-    terminal_text.delete(1.0,tk.END)
     code_data = editor_text.get(1.0, tk.END)
+
     try:
-        sys.stdout = console_output
         exec(code_data)
-        console_text = console_output.getvalue()
+        terminal_text.delete(1.0, tk.END)  # Efface la console avant l'exécution du code
         terminal_text.insert("end", str(console_text))
         terminal_text.config(state="disable")
     except Exception as e:
+        terminal_text.delete(1.0, tk.END)
         terminal_text.insert("end", f"Error: {str(e)}\n")
         terminal_text.config(state="disable")
 
@@ -121,17 +145,29 @@ def add_numbers_line(event=None):
 
     for i in range(int(first_visible_line), int(last_visible_line) + 1):
         y = (i - int(first_visible_line)) * line_height
-        lines_number_canva.create_text(5, y, anchor="nw", text=str(i), tags="numero_ligne")
+        lines_number_canva.create_text(5, y, anchor="nw", text=str(i),fill=selected_theme["editor_number_fg"], tags="line_number")
 
 #theme
 def themes_function():
+    global selected_theme
     if theme.get() == 1:
-        #for text editor
-        editor_text.config(bg=light_theme["editor_text_bg"], fg=light_theme["editor_text_fg"],insertbackground=light_theme["mark"])
-        terminal_text.config(bg=light_theme["console_bg"], fg=light_theme["console_fg"])
+        selected_theme = light_theme
     elif theme.get() ==2:
-        editor_text.config(bg=dark_theme["editor_bg"], fg=dark_theme["editor_fg"],insertbackground=dark_theme["mark"])
-        terminal_text.config(bg=dark_theme["console_bg"], fg=dark_theme["console_fg"])
+        selected_theme = dark_theme
+
+    #for window
+    window.config(bg=selected_theme["window_bg"])
+    #menu bar
+    menu_bar.config(bg=selected_theme["menu_bar_bg"],fg=selected_theme["menu_bar_fg"],)
+    #for text editor
+    editor_Frame.config(bg=selected_theme["editor_frame"])
+    lines_number_canva.config(bg=selected_theme["editor_number_bg"],highlightbackground=selected_theme["editor_number_border"])
+    lines_number_canva.itemconfigure("line_number", fill=selected_theme["editor_number_fg"])
+    editor_text.config(bg=selected_theme["editor_text_bg"], fg=selected_theme["editor_text_fg"],insertbackground=selected_theme["mark"])
+    #for terminal
+    terminal_frame.config(bg=selected_theme["console_frame"])
+    terminal_label.config(bg=selected_theme["console_frame"],fg=selected_theme["console_label"])
+    terminal_text.config(bg=selected_theme["console_bg"], fg=selected_theme["console_fg"])
 
 #still in progress
 def highlight_function(event=None):
@@ -171,13 +207,13 @@ def highlight_function(event=None):
             end_comment = f"{i}.end"
             editor_text.tag_add("comment", begin_comment, end_comment)
     #apply the color
-    editor_text.tag_configure("bool", foreground=light_theme["bool"])
-    editor_text.tag_configure("keyword", foreground=light_theme["keyword"])
-    editor_text.tag_configure("string", foreground=light_theme["string"])
-    editor_text.tag_configure("comment", foreground=light_theme["comment"])
+    editor_text.tag_configure("bool", foreground=selected_theme["bool"])
+    editor_text.tag_configure("keyword", foreground=selected_theme["keyword"])
+    editor_text.tag_configure("string", foreground=selected_theme["string"])
+    editor_text.tag_configure("comment", foreground=selected_theme["comment"])
 
 #Create the top bar
-menu_bar = tk.Menu()
+menu_bar = tk.Menu(borderwidth=0)
 #file
 file_menu = tk.Menu(menu_bar, tearoff=False)
 file_menu.add_command(label="New",accelerator="Ctrl+N",command=new_file)
@@ -210,10 +246,12 @@ editor_Frame = tk.Frame(window,bg="red")
 editor_Frame.pack(fill="both",expand=True)
 
 lines_number_canva = tk.Canvas(editor_Frame,width=30)
-lines_number_canva.pack(side="left",pady=10,fill="y")
+# lines_number_canva = tk.Canvas(editor_Frame,width=30,highlightbackground="#F5F5F5")
 
-editor_text = tk.Text(editor_Frame, font=police_default,undo=True)
-editor_text.pack(side="left",pady=10,fill="both",expand=True)
+lines_number_canva.pack(side="left",fill="y")
+
+editor_text = tk.Text(editor_Frame, font=police_default,borderwidth=0, highlightthickness=0)
+editor_text.pack(side="left",fill="both",expand=True)
 
 
 # #terminal block
@@ -221,7 +259,7 @@ terminal_frame = tk.Frame(window)
 terminal_frame.pack(expand=True,fill="both",padx=(5, 0),pady=(0,5))
 terminal_label = tk.Label(terminal_frame, text="console output:")
 terminal_label.pack(anchor="w")
-terminal_text = tk.Text(terminal_frame,bg="gainsboro",state="disabled")
+terminal_text = tk.Text(terminal_frame,bg="gainsboro",state="disabled",borderwidth=0, highlightthickness=0)
 terminal_text.pack(fill="both")
 
 
