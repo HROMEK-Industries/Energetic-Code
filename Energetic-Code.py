@@ -1,210 +1,287 @@
-import os
-import subprocess
-import re
+from tkinter import ttk,filedialog,font
+from io import StringIO
+import tkinter as tk
 import sys
-from tkinter import Tk, Text, Menu, filedialog, Scrollbar, Frame, Button, Label, END, Canvas, IntVar, Radiobutton, colorchooser
+import re
 
-class CodeEditor:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Energetic Code")
-        self.root.geometry("800x600")
+#window
+window = tk.Tk()
+window.title("Energetic-Code")
+window.geometry("800x600")
 
-        self.theme_var = IntVar(value=1)  # 1 for light theme, 2 for dark theme, 3 for custom theme
+#variables
+file_path = None
+console_position = tk.IntVar()
+console_position.set(4)
+console_output = StringIO()
 
-        self.text_editor = Text(self.root, wrap='word', undo=True)
-        self.text_editor.pack(side='left', expand=True, fill='both', padx=(5, 0), pady=5)
+theme = tk.IntVar()
+theme.set(1)
+light_theme = {"window_bg": "#f3f3f3",
+               "menu_bar_bg":"#f3f3f3",
+               "menu_bar_fg":"#464646",
+               "editor_frame": "#f3f3f3",
+               "editor_number_bg": "#ffffff",
+               "editor_number_fg": "#76c3df",
+               "editor_number_border": "#F5F5F5",
+               "editor_text_bg": "#ffffff",
+               "editor_text_fg": "#464646",
+               "console_frame":"#f3f3f3",
+               "console_label": "#3F3F3F",
+               "console_bg":"#ffffff", 
+               "console_fg": "#464646",
+               "mark": "#1b1b1b",
+               "keyword": "#3d5aff",
+               "bool": "#873dff",
+               "string": "#dd4141",
+               "comment": "#3cc827"}
 
-        self.scroll_bar = Scrollbar(self.root, command=self.text_editor.yview)
-        self.scroll_bar.pack(side='right', fill='y')
-        self.text_editor.config(yscrollcommand=self.scroll_bar.set)
+dark_theme = {"window_bg": "#343434",
+               "menu_bar_bg":"#343434",
+               "menu_bar_fg":"#F7F7F7",
+               "editor_frame": "#1e1e1e",
+               "editor_number_bg": "#464646",
+               "editor_number_fg": "#76c3df",
+               "editor_number_border": "#3E3E3E",
+               "editor_text_bg": "#464646",
+               "editor_text_fg": "#F7F7F7",
+               "console_frame":"#343434",
+               "console_label": "#d8d8d8",
+               "console_bg":"#464646", 
+               "console_fg": "#F7F7F7",
+               "mark": "#FFFFFF",
+               "keyword": "#F99216",
+               "bool": "#F95E16",
+               "string": "#72D532",
+               "comment": "#797979"}
 
-        self.line_numbers = Canvas(self.root, bg="#FFFFFF", width=30)
-        self.line_numbers.pack(side='left', fill='y', padx=(5, 0), pady=5)
+selected_theme = None
 
-        self.text_editor.bind('<KeyRelease>', self.highlight_text)
+police_default = ("Helvetica", 12)
 
-        console_frame = Frame(self.root)
-        console_frame.pack(expand=True, fill='both', padx=(5, 0), pady=(0, 5))
+# keywords =  re.compile(r'\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b'),
+keywords = ["and","as","async","assert","break","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"]
 
-        console_label = Label(console_frame, text="Console Output")
-        console_label.pack(anchor='w')
 
-        self.console = Text(console_frame, wrap='word', state='disabled')
-        self.console.pack(expand=True, fill='both')
 
-        self.file_path = None
+#functions
+def KeyRelease_function(event=None):
+    highlight_function()
+    add_numbers_line()
 
-        buttons_frame = Frame(self.root)
-        buttons_frame.pack(pady=(5, 0))
+#file functions
+def run(event=None):
+    sys.stdout = console_output
+    console_text = console_output.getvalue()
+    terminal_text.config(state="normal")
+    code_data = editor_text.get(1.0, tk.END)
 
-        new_button = Button(buttons_frame, text="New", command=self.new_file)
-        new_button.grid(row=0, column=0, padx=5)
+    try:
+        exec(code_data)
+        terminal_text.delete(1.0, tk.END)  # Efface la console avant l'exécution du code
+        terminal_text.insert("end", str(console_text))
+        terminal_text.config(state="disable")
+    except Exception as e:
+        terminal_text.delete(1.0, tk.END)
+        terminal_text.insert("end", f"Error: {str(e)}\n")
+        terminal_text.config(state="disable")
 
-        open_button = Button(buttons_frame, text="Open", command=self.open_file)
-        open_button.grid(row=0, column=1, padx=5)
+def new_file(event=None):
+    global file_path
+    editor_text.delete(1.0, tk.END)
+    editor_text.insert(1.0, "#write your code here")
+    file_path = None
+    print("new file :" +str(file_path))
 
-        save_button = Button(buttons_frame, text="Save", command=self.save_file)
-        save_button.grid(row=0, column=2, padx=5)
+def save_file(event=None):
+    if file_path != None or "":
+        with open(str(file_path), "w") as f:
+            f.write(editor_text.get(1.0, tk.END))
+    else :
+        save_as()
+    print("save :" +str(file_path))
 
-        run_button = Button(buttons_frame, text="Run", command=self.run_code)
-        run_button.grid(row=0, column=3, padx=5)
+def save_as(event=None):
+    global file_path
+    file_path = tk.filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python files", "*.py")])
+    print("save as :" + file_path)
+    with open(str(file_path), "w") as f:
+        f.write(editor_text.get(1.0, tk.END))
 
-        self.main_menu = Menu()
+def open_file(event=None):
+    global file_path
+    file_path = filedialog.askopenfilename(filetypes=[("Python files", "*.py")])
+    with open(file_path, "r") as f:
+        content = f.read()
+        editor_text.delete(1.0, tk.END)
+        editor_text.insert(tk.END, content)
+    print("save as :" +str(file_path))
 
-        file_menu = Menu(self.main_menu, tearoff=0)
-        file_menu.add_command(label="New", command=self.new_file, accelerator="Ctrl+N")
-        file_menu.add_command(label="Open", command=self.open_file, accelerator="Ctrl+O")
-        file_menu.add_command(label="Save", command=self.save_file, accelerator="Ctrl+S")
-        file_menu.add_command(label="Save As", command=self.save_as_file, accelerator="Ctrl+Shift+S")
-        file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.exit_app)
-        self.main_menu.add_cascade(label="File", menu=file_menu)
+#editor functions
+def select_all(event=None):
+    editor_text.tag_add("sel", "1.0", "end")
 
-        self.root.bind_all("<Control-n>", lambda event: self.new_file())
-        self.root.bind_all("<Control-o>", lambda event: self.open_file())
-        self.root.bind_all("<Control-s>", lambda event: self.save_file())
-        self.root.bind_all("<Control-S>", lambda event: self.save_as_file())
+def add_indetations():
 
-        run_menu = Menu(self.main_menu, tearoff=0)
-        run_menu.add_command(label="Run", command=self.run_code, accelerator="F5")
-        self.main_menu.add_cascade(label="Run", menu=run_menu)
+    print("hey")
 
-        settings_menu = Menu(self.main_menu, tearoff=0)
-        theme_menu = Menu(settings_menu, tearoff=0)
-        theme_menu.add_radiobutton(label="Light", variable=self.theme_var, value=1, command=self.toggle_theme)
-        theme_menu.add_radiobutton(label="Dark", variable=self.theme_var, value=2, command=self.toggle_theme)
-        theme_menu.add_radiobutton(label="Custom", variable=self.theme_var, value=3, command=self.choose_custom_theme)
-        settings_menu.add_cascade(label="Theme", menu=theme_menu)
-        self.main_menu.add_cascade(label="Settings", menu=settings_menu)
+# this function was made with a lot of gpt
+def add_numbers_line(event=None):
+    police = editor_text.cget("font")
+    if police:
+    # Extracts the height of the font
+        line_height = tk.font.Font(font=police).metrics("linespace")
+    else:
+        #choose a default height in wrong issue
+        line_height = 20  # Vous pouvez ajuster cette valeur selon votre besoin
 
-        self.root.config(menu=self.main_menu)
+    lines_number_canva.delete("numero_ligne")
+    
+    y0 = int(editor_text.yview()[0] * editor_text.winfo_height())
+    y1 = int(editor_text.yview()[1] * editor_text.winfo_height())
 
-        self.highlight_rules = {
-            'keyword': re.compile(r'\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b'),
-            'string': re.compile(r'\'[^\']*\'|\"[^\"]*\"'),
-            'comment': re.compile(r'#.*'),
-            'boolean': re.compile(r'\b(?:True|False)\b'),
-        }
+    first_visible_line = editor_text.index("@0,%d" % y0).split('.')[0]
+    last_visible_line = editor_text.index("@0,%d" % y1).split('.')[0]
 
-        self.light_theme_tags = {
-            'keyword': 'orange',
-            'string': 'green',
-            'comment': 'gray',
-            'boolean': 'blue',
-        }
+    for i in range(int(first_visible_line), int(last_visible_line) + 1):
+        y = (i - int(first_visible_line)) * line_height
+        lines_number_canva.create_text(5, y, anchor="nw", text=str(i),fill=selected_theme["editor_number_fg"], tags="line_number")
 
-        self.dark_theme_tags = {
-            'keyword': 'orange',
-            'string': 'green',
-            'comment': 'gray',
-            'boolean': 'blue',
-        }
+#theme
+def themes_function():
+    global selected_theme
+    if theme.get() == 1:
+        selected_theme = light_theme
+    elif theme.get() ==2:
+        selected_theme = dark_theme
 
-    def highlight_text(self, *args):
-        self.text_editor.tag_remove('keyword', '1.0', END)
-        self.text_editor.tag_remove('string', '1.0', END)
-        self.text_editor.tag_remove('comment', '1.0', END)
-        self.text_editor.tag_remove('boolean', '1.0', END)
+    #for window
+    window.config(bg=selected_theme["window_bg"])
+    #menu bar
+    menu_bar.config(bg=selected_theme["menu_bar_bg"],fg=selected_theme["menu_bar_fg"],)
+    #for text editor
+    editor_Frame.config(bg=selected_theme["editor_frame"])
+    lines_number_canva.config(bg=selected_theme["editor_number_bg"],highlightbackground=selected_theme["editor_number_border"])
+    lines_number_canva.itemconfigure("line_number", fill=selected_theme["editor_number_fg"])
+    editor_text.config(bg=selected_theme["editor_text_bg"], fg=selected_theme["editor_text_fg"],insertbackground=selected_theme["mark"])
+    #for terminal
+    terminal_frame.config(bg=selected_theme["console_frame"])
+    terminal_label.config(bg=selected_theme["console_frame"],fg=selected_theme["console_label"])
+    terminal_text.config(bg=selected_theme["console_bg"], fg=selected_theme["console_fg"])
 
-        theme_tags = self.light_theme_tags if self.theme_var.get() == 1 else self.dark_theme_tags
-        for key, pattern in self.highlight_rules.items():
-            self.text_editor.tag_remove(key, "1.0", END)
-            for match in pattern.finditer(self.text_editor.get("1.0", "end-1c")):
-                start_pos = self.text_editor.index(f"1.0 + {match.start()} chars")
-                end_pos = self.text_editor.index(f"1.0 + {match.end()} chars")
-                self.text_editor.tag_add(key, start_pos, end_pos)
-                self.text_editor.tag_configure(key, foreground=theme_tags[key])
+#still in progress
+def highlight_function(event=None):
+    #deletes the existant tags
+    editor_text.tag_remove("keyword", 1.0, tk.END)
+    editor_text.tag_remove("string", 1.0, tk.END)
+    editor_text.tag_remove("comment", 1.0, tk.END)
+    editor_text.tag_remove("bool", 1.0, tk.END)
 
-    def toggle_theme(self):
-        if self.theme_var.get() == 1:  # Light theme
-            self.root.config(bg="#FFFFFF")
-            self.text_editor.config(bg="#FFFFFF", fg="#000000", insertbackground="#000000")
-            self.line_numbers.config(bg="#FFFFFF")
-            self.console.config(bg="#FFFFFF", fg="#000000")
-        else:  # Dark theme
-            self.root.config(bg="#1E1E1E")
-            self.text_editor.config(bg="#1E1E1E", fg="#FFFFFF", insertbackground="#FFFFFF")
-            self.line_numbers.config(bg="#1E1E1E")
-            self.console.config(bg="#1E1E1E", fg="#FFFFFF")
+    code_data = editor_text.get(1.0, tk.END)
 
-        self.highlight_text()
+    #divides the code in lines
+    lines = code_data.split("\n")
 
-    def choose_custom_theme(self):
-        color = colorchooser.askcolor(title="Choose Color")
-        if color[1]:
-            self.root.config(bg=color[1])
-            self.text_editor.config(bg=color[1])
-            self.line_numbers.config(bg=color[1])
-            self.console.config(bg=color[1])
+    for i, line in enumerate(lines, 1):
+        #for keywords
+        for keyword in keywords:
+        # searches word in the text belonging to keywords list
+            for match in re.finditer(r'\b{}\b'.format(keyword), line):
+               
+                start_index = "{}.{}".format(i, match.start())
+                end_index = "{}.{}".format(i, match.end())
+                
+                if match.group(0) != "True" and match.group(0) != "False":
+                    editor_text.tag_add("keyword", start_index, end_index)
+                else:
+                    editor_text.tag_add("bool", start_index, end_index)
 
-    def new_file(self):
-        # Clear the text editor
-        self.text_editor.delete(1.0, END)
-        self.file_path = None
+        #for strings
+        for string in re.finditer(r'(\'[^\']*\'|\"[^\"]*\")', line):
+            first_str = f"{i}.{string.start()}" 
+            last_str = f"{i}.{string.end()}"
+            editor_text.tag_add("string", first_str, last_str)
+        # for comment
+        for comment in re.finditer(r'(#.*)', line):
+            begin_comment = f"{i}.{comment.start()}"
+            end_comment = f"{i}.end"
+            editor_text.tag_add("comment", begin_comment, end_comment)
+    #apply the color
+    editor_text.tag_configure("bool", foreground=selected_theme["bool"])
+    editor_text.tag_configure("keyword", foreground=selected_theme["keyword"])
+    editor_text.tag_configure("string", foreground=selected_theme["string"])
+    editor_text.tag_configure("comment", foreground=selected_theme["comment"])
 
-    def open_file(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Python Files", "*.py"), ("All Files", "*.*")])
-        if file_path:
-            self.text_editor.delete(1.0, END)
-            with open(file_path, "r") as file:
-                self.text_editor.insert(1.0, file.read())
-            self.file_path = file_path
-            self.highlight_text()
+#Create the top bar
+menu_bar = tk.Menu(borderwidth=0)
+#file
+file_menu = tk.Menu(menu_bar, tearoff=False)
+file_menu.add_command(label="New",accelerator="Ctrl+N",command=new_file)
+file_menu.add_command(label="Save",accelerator="Ctrl+S",command=save_file)
+file_menu.add_command(label="Save_as",accelerator="Shift+Ctrl+A",command=save_as)
+file_menu.add_command(label="open",accelerator="Ctrl+O",command=open_file)
+file_menu.add_separator()
+file_menu.add_command(label="Exit",accelerator=None, command=exit)
+menu_bar.add_cascade(menu=file_menu, label="File")
+#run
+run_menu = tk.Menu(menu_bar, tearoff=False)
+run_menu.add_command(label="Run",accelerator="F5",command=run)
+menu_bar.add_cascade(menu=run_menu, label="Run")
+#preferences
+preferences_menu = tk.Menu(menu_bar, tearoff=False)
+theme_menu = tk.Menu(menu_bar,tearoff=False)
+console_position_menu = tk.Menu(menu_bar,tearoff=False)
+theme_menu.add_radiobutton(label="Light",value=1,variable=theme,command=themes_function)
+theme_menu.add_radiobutton(label="Dark",value=2,variable=theme,command=themes_function)
+console_position_menu.add_radiobutton(label="Right",value=1,variable=console_position)
+console_position_menu.add_radiobutton(label="Left",value=2,variable=console_position)
+console_position_menu.add_radiobutton(label="Top",value=3,variable=console_position)
+console_position_menu.add_radiobutton(label="Bottom",value=4,variable=console_position)
+menu_bar.add_cascade(menu=preferences_menu, label="Preferences")
+preferences_menu.add_cascade(menu=theme_menu,label="Themes")
+preferences_menu.add_cascade(menu=console_position_menu,label="Console position(in progress)")
 
-    def save_file(self):
-        if self.file_path:
-            with open(self.file_path, "w") as file:
-                file.write(self.text_editor.get(1.0, END))
-        else:
-            self.save_as_file()
+#block text
+editor_Frame = tk.Frame(window,bg="red")
+editor_Frame.pack(fill="both",expand=True)
 
-    def save_as_file(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python Files", "*.py"), ("All Files", "*.*")])
-        if file_path:
-            with open(file_path, "w") as file:
-                file.write(self.text_editor.get(1.0, END))
-            self.file_path = file_path
+lines_number_canva = tk.Canvas(editor_Frame,width=30)
+# lines_number_canva = tk.Canvas(editor_Frame,width=30,highlightbackground="#F5F5F5")
 
-    def exit_app(self):
-        self.root.quit()
+lines_number_canva.pack(side="left",fill="y")
 
-    def run_code(self):
-        # Save the code to a temporary file
-        with open("temp_code.py", "w") as file:
-            file.write(self.text_editor.get(1.0, END))
+editor_text = tk.Text(editor_Frame, font=police_default,borderwidth=0, highlightthickness=0)
+editor_text.pack(side="left",fill="both",expand=True)
 
-        try:
-            # Get the full path to the Python executable
-            python_executable = sys.executable if hasattr(sys, 'frozen') else sys.executable
 
-            # Execute the code using the Python interpreter
-            process = subprocess.Popen([python_executable, "temp_code.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate()
+# #terminal block
+terminal_frame = tk.Frame(window)
+terminal_frame.pack(expand=True,fill="both",padx=(5, 0),pady=(0,5))
+terminal_label = tk.Label(terminal_frame, text="console output:")
+terminal_label.pack(anchor="w")
+terminal_text = tk.Text(terminal_frame,bg="gainsboro",state="disabled",borderwidth=0, highlightthickness=0)
+terminal_text.pack(fill="both")
 
-            # Display output and errors in the console
-            self.console.config(state='normal')
-            self.console.delete(1.0, END)
-            self.console.insert(END, stdout)
-            if stderr:
-                self.console.insert(END, stderr, 'error')
-            self.console.config(state='disabled')
 
-        except Exception as e:
-            # Display error if execution fails
-            self.console.config(state='normal')
-            self.console.delete(1.0, END)
-            self.console.insert(END, f"Error occurred: {str(e)}")
-            self.console.config(state='disabled')
+#shortcuts
+window.bind_all("<F5>", run)
+window.bind_all("<Control-Key-5>", run)
+window.bind_all("<Control-n>", new_file)
+window.bind_all("<Control-N>", new_file)
+window.bind_all("<Control-s>", save_file)
+window.bind_all("<Control-S>", save_file)
+window.bind_all("<Shift-Control-s>", save_as)
+window.bind_all("<Shift-Control-S>", save_as)
+window.bind_all("<Control-o>", open_file)
+window.bind_all("<Control-O>", open_file)
+window.bind_all("<Control-a>", select_all)
+window.bind_all("<Control-A>", select_all)
+editor_text.bind("<KeyRelease>", KeyRelease_function)
+# window.bind_all("<Control-slash>", comment_line)
+# window.bind_all("<Control-slash>", comment_line)
 
-        finally:
-            # Remove temporary file
-            os.remove("temp_code.py")
 
-def main():
-    root = Tk()
-    code_editor = CodeEditor(root)
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
+window.config(menu=menu_bar)
+themes_function()
+new_file()
+window.mainloop()
