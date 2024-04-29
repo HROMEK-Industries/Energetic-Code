@@ -6,7 +6,7 @@ import re
 
 #window
 window = tk.Tk()
-window.title("Energetic-Code")
+window.title("Energetic Code")
 window.geometry("800x600")
 
 #variables
@@ -125,7 +125,7 @@ def add_indetations():
 
     print("hey")
 
-# this function was made with a lot of gpt
+# hard code part
 def add_numbers_line(event=None):
     police = editor_text.cget("font")
     if police:
