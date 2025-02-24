@@ -18,17 +18,16 @@ class EditorTab:
         self.line_numbers.pack(side="left", fill="y")
         
         # Right: Text widget with scrollbars
-        self.v_scroll = ttk.Scrollbar(self.frame, orient="vertical")
+        self.v_scroll = ttk.Scrollbar(self.frame, orient="vertical", command=self.on_scroll)
         self.v_scroll.pack(side="right", fill="y")
-        self.h_scroll = ttk.Scrollbar(self.frame, orient="horizontal")
+        self.h_scroll = ttk.Scrollbar(self.frame, orient="horizontal", command=self.text_widget_xscroll)
         self.h_scroll.pack(side="bottom", fill="x")
         self.text_widget = tk.Text(
             self.frame, font=self.text_font, undo=True, wrap="none",
-            yscrollcommand=self.v_scroll.set, xscrollcommand=self.h_scroll.set
+            yscrollcommand=self.v_scroll.set, xscrollcommand=self.h_scroll.set, padx=5, pady=5
         )
         self.text_widget.pack(fill="both", expand=True)
-        self.v_scroll.config(command=self.text_widget.yview)
-        self.h_scroll.config(command=self.text_widget.xview)
+        # Insert initial content
         self.text_widget.insert("1.0", content)
         
         # Bind events for auto‑indent, syntax highlighting, autocompletion, and status updates
@@ -58,9 +57,17 @@ class EditorTab:
         # Callback for status bar updates (set later)
         self.cursor_info_callback = None
 
+        # Update line numbers immediately
         self.update_line_numbers()
         self.highlight_syntax()
 
+    def text_widget_xscroll(self, *args):
+        self.text_widget.xview(*args)
+    
+    def on_scroll(self, *args):
+        self.text_widget.yview(*args)
+        self.update_line_numbers()
+    
     def select_all(self, event=None):
         self.text_widget.tag_add("sel", "1.0", "end")
         return "break"
@@ -98,6 +105,7 @@ class EditorTab:
 
     def highlight_syntax(self):
         content = self.text_widget.get("1.0", "end-1c")
+        # Remove previous tags
         for tag in ["keyword", "string", "comment"]:
             self.text_widget.tag_remove(tag, "1.0", "end")
         lines = content.splitlines()
@@ -273,6 +281,7 @@ class CodeEditor(tk.Tk):
         # Right pane: Editor tabs
         self.editor_notebook = ttk.Notebook(self.main_pane)
         self.main_pane.add(self.editor_notebook, weight=4)
+        self.editor_notebook.bind("<Button-1>", self.on_tab_click)
         self.new_file()  # Open initial tab
 
         # Bottom: Notebook for Console Output and Terminal
@@ -417,7 +426,9 @@ class CodeEditor(tk.Tk):
 
     def new_file(self, event=None):
         editor_tab = EditorTab(self.editor_notebook)
-        tab_id = self.editor_notebook.add(editor_tab.frame, text="Untitled")
+        # Append an "  X" to the tab text to simulate a close button.
+        tab_text = "Untitled  X"
+        tab_id = self.editor_notebook.add(editor_tab.frame, text=tab_text)
         editor_tab.cursor_info_callback = self.update_status_bar
         self.file_tabs[tab_id] = editor_tab
         self.editor_notebook.select(editor_tab.frame)
@@ -430,7 +441,8 @@ class CodeEditor(tk.Tk):
                 content = f.read()
             editor_tab = EditorTab(self.editor_notebook, file_path=path, content=content)
             filename = os.path.basename(path)
-            tab_id = self.editor_notebook.add(editor_tab.frame, text=filename)
+            tab_text = f"{filename}  X"
+            tab_id = self.editor_notebook.add(editor_tab.frame, text=tab_text)
             editor_tab.cursor_info_callback = self.update_status_bar
             self.file_tabs[tab_id] = editor_tab
             self.editor_notebook.select(editor_tab.frame)
@@ -455,7 +467,7 @@ class CodeEditor(tk.Tk):
                     f.write(editor.get_content())
                 filename = os.path.basename(path)
                 tab_index = self.editor_notebook.index("current")
-                self.editor_notebook.tab(tab_index, text=filename)
+                self.editor_notebook.tab(tab_index, text=f"{filename}  X")
 
     def close_tab(self, event=None):
         current = self.editor_notebook.select()
@@ -465,8 +477,25 @@ class CodeEditor(tk.Tk):
                 if current in self.file_tabs:
                     del self.file_tabs[current]
             else:
-                # If only one tab, clear its contents.
                 self.current_editor().set_content("")
+
+    def on_tab_click(self, event):
+        """Detect if the click is on the close (X) area of a tab."""
+        try:
+            x, y = event.x, event.y
+            index = self.editor_notebook.index("@%d,%d" % (x, y))
+            bbox = self.editor_notebook.bbox(index)
+            if bbox:
+                # If click is in the far right of the tab (last 20 pixels), close the tab.
+                if x > bbox[0] + bbox[2] - 20:
+                    tab_ids = self.editor_notebook.tabs()
+                    tab_id = tab_ids[index]
+                    self.editor_notebook.forget(index)
+                    if tab_id in self.file_tabs:
+                        del self.file_tabs[tab_id]
+                    return "break"
+        except Exception:
+            pass
 
     def run_code(self, event=None):
         editor = self.current_editor()
@@ -514,10 +543,7 @@ class CodeEditor(tk.Tk):
         self.terminal_entry = ttk.Entry(self.terminal_frame)
         self.terminal_entry.pack(fill="x")
         self.terminal_entry.bind("<Return>", self.run_terminal_command)
-        # Print initial prompt
         self.print_terminal_prompt()
-
-        # Maintain a simple command history
         self.terminal_history = []
         self.terminal_history_index = None
         self.terminal_entry.bind("<Up>", self.on_terminal_up)
@@ -574,15 +600,20 @@ class CodeEditor(tk.Tk):
 
     def apply_theme(self):
         theme = self.themes[self.current_theme]
+        # Update root and widget styles
         self.configure(bg=theme["bg"])
         style = ttk.Style(self)
         style.theme_use("clam")
         style.configure("TFrame", background=theme["bg"])
         style.configure("TLabel", background=theme["bg"], foreground=theme["fg"])
         style.configure("TButton", background=theme["bg"], foreground=theme["fg"])
+        style.configure("TNotebook", background=theme["bg"])
+        style.configure("TNotebook.Tab", background=theme["bg"], foreground=theme["fg"])
+        # Update all editor tabs
         for editor in self.file_tabs.values():
             editor.text_widget.config(bg=theme["editor_bg"], fg=theme["editor_fg"], insertbackground=theme["insert_bg"])
             editor.line_numbers.config(bg=theme["line_number_bg"])
+        # Update console and terminal
         self.console_output_text.config(bg=theme["console_bg"], fg=theme["console_fg"], insertbackground=theme["insert_bg"])
         self.terminal_text.config(bg=theme["console_bg"], fg=theme["console_fg"], insertbackground=theme["insert_bg"])
 
